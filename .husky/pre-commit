@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# Fallow gate: block commits that introduce new dead code, complexity,
+# or duplication beyond the frozen baselines in .fallow/. Mirrors CI's
+# --base selection by using origin/main by default. Set FALLOW_BASE_REF
+# for an intentionally different local target. The hook intentionally
+# does not trust origin/HEAD because local clones can cache it to a
+# branch unrelated to this repo's PR target, which makes fallow fail
+# before it can audit the staged change. If origin/main is behind, run
+# `git fetch` first.
+# Regenerate Istanbul coverage first so CRAP scores match the baseline
+# (baseline was saved with coverage enabled; running audit without
+# coverage would produce false regressions). `pnpm test:coverage`
+# takes ~4s on a warm cache — keep it in the hook so local commits
+# can't silently pass a gate CI would fail.
+# To lower a baseline, refactor the flagged code and regenerate:
+#   pnpm dlx fallow health --save-baseline=.fallow/health-baseline.json
+#   pnpm dlx fallow dupes  --save-baseline=.fallow/dupes-baseline.json
+BASE=${FALLOW_BASE_REF:-origin/main}
+if ! git rev-parse --verify "$BASE" >/dev/null 2>&1 || ! git merge-base HEAD "$BASE" >/dev/null 2>&1; then
+  echo "fallow pre-commit: '$BASE' is not available or has no merge-base with HEAD." >&2
+  echo "fallow pre-commit: run 'git fetch origin' or set FALLOW_BASE_REF to a valid base ref." >&2
+  exit 1
+fi
+
+pnpm test:coverage
+FALLOW_COVERAGE=coverage/coverage-final.json pnpm dlx fallow audit \
+  --health-baseline=.fallow/health-baseline.json \
+  --dupes-baseline=.fallow/dupes-baseline.json \
+  --base="$BASE"
