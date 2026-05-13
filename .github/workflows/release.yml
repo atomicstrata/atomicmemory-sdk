@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so `fallow audit` can walk back to main.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests with coverage
+        # Feeds Istanbul coverage-final.json into the fallow audit step
+        # below; matches the CI workflow.
+        run: pnpm test:coverage
+
+      - name: Code health (fallow audit vs baselines)
+        env:
+          # Matches CI's coverage wiring; tests step above produced
+          # coverage/coverage-final.json.
+          FALLOW_COVERAGE: coverage/coverage-final.json
+        run: pnpm dlx fallow audit
+          --health-baseline=.fallow/health-baseline.json
+          --dupes-baseline=.fallow/dupes-baseline.json
+          --base=origin/main
+          --no-cache
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+      - name: Publish to npm
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

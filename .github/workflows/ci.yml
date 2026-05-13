@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so `fallow audit` can compute diffs against the
+          # base branch. Default fetch-depth: 1 leaves only HEAD and
+          # audit fails with "could not detect base branch".
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests with coverage
+        # Istanbul-format coverage-final.json feeds fallow audit below so
+        # CRAP scores reflect real test coverage instead of fallow's
+        # default 0%-assumed. Coverage provider is pinned in vitest.config.ts.
+        run: pnpm test:coverage
+
+      - name: Code health (fallow audit vs baselines)
+        # Audit changed files against frozen baselines in .fallow/. New
+        # complexity / duplication regressions fail; pre-existing
+        # baseline-level debt is grandfathered. Refactor + regenerate the
+        # baseline to lower the floor — the ratchet step below enforces
+        # monotonic improvement.
+        env:
+          # Feeds Istanbul coverage-final.json from the prior step into
+          # fallow. Baseline was saved with coverage enabled; audit must
+          # match or CRAP-score drift produces false regressions.
+          FALLOW_COVERAGE: coverage/coverage-final.json
+        run: pnpm dlx fallow audit
+          --health-baseline=.fallow/health-baseline.json
+          --dupes-baseline=.fallow/dupes-baseline.json
+          --base=origin/${{ github.base_ref || github.event.repository.default_branch }}
+          --no-cache
+
+      - name: Baseline ratchet (shrink-only)
+        # Blocks PRs that grow .fallow/*-baseline.json. Refactors that
+        # drop entries pass freely; new entries fail even if they'd be
+        # inside the grandfathered audit. Ensures debt goes monotonically
+        # to zero over time.
+        run: ./scripts/check-baseline-ratchet.sh origin/${{ github.base_ref || github.event.repository.default_branch }}
+
+      - name: Boundary enforcement — no application-layer imports
+        run: |
+          # The memory-layer SDK must stay backend-agnostic. Forbid any
+          # import whose path fragment matches a known application-layer
+          # concern (user accounts, web-SDK glue, consent, settings,
+          # knowledge-base, request context). Covers static imports
+          # (`from '...'`), re-exports (`export ... from '...'`), dynamic
+          # `import(...)`, and `require(...)`. Tracked files only — avoids
+          # false positives from dist/, node_modules/, coverage/, .tsup/.
+          matches=$(git ls-files '*.ts' '*.tsx' '*.mts' '*.cts' '*.d.ts' '*.js' '*.jsx' '*.mjs' '*.cjs' \
+            | xargs --no-run-if-empty grep -nE \
+              "(from|import\(|require\()[[:space:]]*['\"][^'\"]*/(user-accounts|web-sdk|consent|settings|knowledge-base|context)[/'\"]" \
+              2>/dev/null || true)
+          if [ -n "$matches" ]; then
+            echo "::error::Application-layer paths are forbidden in the memory-layer SDK"
+            echo "$matches"
+            exit 1
+          fi
