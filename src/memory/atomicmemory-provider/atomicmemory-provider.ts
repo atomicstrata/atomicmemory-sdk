@@ -268,9 +268,8 @@ export class AtomicMemoryProvider
 
   /**
    * Lazily construct a single AtomicMemoryHandle instance bound to this
-   * provider. The handle's methods will be implemented in Phase 7b-7g;
-   * for now, invoking them throws with an actionable error so consumers
-   * learn of the gap early rather than silently getting no-ops.
+   * provider. The handle exposes AtomicMemory-specific methods through
+   * named extensions instead of the backend-agnostic provider surface.
    */
   private _atomicmemoryHandle?: AtomicMemoryHandle;
   private atomicmemoryHandle(): AtomicMemoryHandle {

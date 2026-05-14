@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace agents HTTP wiring (Phase 7g)
+ * @file AtomicMemory namespace agents HTTP wiring
  *
  * Covers the 5 agents methods against a mocked fetch. Verifies:
  *   - wire paths + methods (NB: under /v1/agents, NOT /v1/memories)

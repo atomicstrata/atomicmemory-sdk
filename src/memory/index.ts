@@ -13,3 +13,4 @@ export * from './pipeline';
 export * from './registration';
 export * from './atomicmemory-provider';
 export * from './mem0-provider';
+export * from './hindsight-provider';

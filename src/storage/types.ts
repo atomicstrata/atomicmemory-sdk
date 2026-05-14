@@ -101,7 +101,7 @@ export interface StorageLifecycle {
   deleteSemantics?: StorageDeleteSemantics;
 }
 
-/** Optional replication state — populated by Filecoin / FOC etc. */
+/** Optional replication state for content-addressed storage backends. */
 export interface ReplicationState {
   desiredCopies?: number;
   confirmedCopies?: number;

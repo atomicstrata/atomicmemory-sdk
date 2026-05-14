@@ -21,9 +21,9 @@
  * v1 SDK is server-side only. Browser bundles must proxy through a
  * trusted server (the webapp-sdk does this for `Atomicmem-webapp`).
  *
- * The flat `MemoryClient` export remains available for internal-tool
- * consumers but its JSDoc tags it `@internal` and steers readers
- * toward `AtomicMemoryClient.memory`.
+ * Applications that only need memory operations can still use
+ * `MemoryClient` directly. New integrations should prefer
+ * `AtomicMemoryClient.memory`.
  */
 
 import { MemoryClient, type MemoryClientConfig } from './memory-client';
@@ -55,9 +55,8 @@ export interface AtomicMemoryClientConfig {
 }
 
 /**
- * Primary public client. Holds a `memory` namespace (existing
- * `MemoryClient`) and a `storage` namespace (the Step-6 concrete
- * `StorageClient`).
+ * Primary public client. Holds a `memory` namespace (`MemoryClient`)
+ * and a `storage` namespace (`StorageClient`).
  */
 export class AtomicMemoryClient {
   readonly memory: MemoryClient;

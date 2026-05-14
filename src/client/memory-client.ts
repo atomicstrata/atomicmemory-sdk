@@ -12,6 +12,7 @@ import type { MemoryProvider } from '../memory/provider';
 import type { AtomicMemoryProviderConfig } from '../memory/atomicmemory-provider/types';
 import type { AtomicMemoryHandle } from '../memory/atomicmemory-provider/handle';
 import type { Mem0ProviderConfig } from '../memory/mem0-provider/types';
+import type { HindsightProviderConfig } from '../memory/hindsight-provider/types';
 import type {
   IngestInput,
   IngestResult,
@@ -37,6 +38,7 @@ import {
 export interface MemoryProviderConfigs {
   atomicmemory?: AtomicMemoryProviderConfig;
   mem0?: Mem0ProviderConfig;
+  hindsight?: HindsightProviderConfig;
   [providerName: string]: unknown;
 }
 

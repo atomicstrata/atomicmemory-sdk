@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace base-route HTTP wiring (Phase 7b)
+ * @file AtomicMemory namespace base-route HTTP wiring
  *
  * Tests each of the 9 base-route methods on the AtomicMemoryHandle:
  * HTTP endpoint, request-body/query shape, response mapping, and scope

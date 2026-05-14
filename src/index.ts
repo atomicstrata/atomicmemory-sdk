@@ -18,15 +18,13 @@
  */
 
 // Primary client — `AtomicMemoryClient` aggregates the memory and
-// storage namespaces. README + JSDoc steer callers here; the flat
-// `MemoryClient` export below stays available for internal-tool
-// consumers but is `@internal` from the public-surface POV.
+// storage namespaces. `MemoryClient` remains available for
+// applications that only need memory operations.
 export {
   AtomicMemoryClient,
   type AtomicMemoryClientConfig,
 } from './client/atomic-memory-client';
 
-/** @internal — primary public surface is `AtomicMemoryClient.memory`. */
 export { MemoryClient } from './client/memory-client';
 export type {
   MemoryClientConfig,
@@ -55,10 +53,8 @@ export {
   type RetryPolicy,
 } from './core/error-handling/';
 
-// KV cache (internal embedding / transformer cache; was `./storage` before the
-// storage-sibling rev — see plan rev-6 §finding 1). Re-exported here for
-// backwards compatibility with internal callers; new storage API lives
-// under `./storage`.
+// KV cache used by embeddings and local search. New artifact-storage
+// integrations should use the `./storage` subpath.
 export { StorageManager } from './kv-cache/storage-manager';
 export { MemoryStorageAdapter } from './kv-cache/memory-storage';
 export { IndexedDBStorageAdapter } from './kv-cache/indexeddb-storage';
@@ -77,8 +73,7 @@ export {
 } from './kv-cache/validation';
 export type { ValidationConfig, ValidationResult } from './kv-cache/validation';
 
-// Storage API (the new public `client.storage` namespace — types and
-// interfaces only in this step; concrete runtime client lands in Step 6).
+// Storage API for the public `client.storage` namespace.
 export * from './storage';
 
 // Logging
@@ -148,6 +143,7 @@ export * from './memory/pipeline';
 export * from './memory/registration';
 export * from './memory/atomicmemory-provider';
 export * from './memory/mem0-provider';
+export * from './memory/hindsight-provider';
 
 // Version information
 export const SDK_VERSION = '1.0.0';

@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace lifecycle HTTP wiring (Phase 7c)
+ * @file AtomicMemory namespace lifecycle HTTP wiring
  *
  * Exercises each of the 7 lifecycle methods against a mocked fetch:
  *   consolidate, decay, cap, stats, resetSource, reconcile,
