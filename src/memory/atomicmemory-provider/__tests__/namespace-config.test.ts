@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace config HTTP wiring (Phase 7f)
+ * @file AtomicMemory namespace config HTTP wiring
  *
  * Covers health() + updateConfig() against a mocked fetch. Verifies:
  *   - wire paths + methods

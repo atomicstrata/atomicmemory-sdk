@@ -1,8 +1,15 @@
 # @atomicmemory/sdk
 
+[![CI](https://github.com/atomicstrata/atomicmemory-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/atomicstrata/atomicmemory-sdk/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40atomicmemory%2Fsdk?label=npm)](https://www.npmjs.com/package/@atomicmemory/sdk)
+[![Docs](https://img.shields.io/badge/docs-docs.atomicstrata.ai-blue)](https://docs.atomicstrata.ai)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Backend-agnostic memory-layer SDK — pluggable providers, local embeddings, storage adapters, semantic search.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+**Docs:** [docs.atomicstrata.ai/sdk](https://docs.atomicstrata.ai/sdk)
+
+AtomicMemory Core currently reaches cost-Pareto SOTA on BEAM-100K, BEAM-1M, and LoCoMo10, with BEAM-10M parity against the strongest published Mem0-new result. The SDK is the typed application surface for building on that memory layer.
 
 ## What this package provides
 
@@ -33,6 +40,8 @@ pnpm add @atomicmemory/sdk
 Also works with `npm install` / `yarn add`.
 
 ## Quick start
+
+Prerequisite: start `atomicmemory-core` first. The full SDK walkthrough is in the [SDK Quickstart](https://docs.atomicstrata.ai/sdk/quickstart).
 
 ```ts
 import { AtomicMemoryClient } from '@atomicmemory/sdk';
@@ -69,9 +78,9 @@ const artifact = await client.storage.put({
 console.log(artifact.artifactId);
 ```
 
-The flat `MemoryClient` export is still available for internal-tool
-consumers but its JSDoc tags it `@internal`; new code should reach
-the memory namespace through `AtomicMemoryClient.memory`.
+Applications that only need memory operations can still use
+`MemoryClient` directly. New integrations should prefer the
+namespaced `AtomicMemoryClient.memory` surface.
 
 ## Providers
 

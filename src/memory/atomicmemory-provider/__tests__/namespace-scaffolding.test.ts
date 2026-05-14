@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace scaffolding tests (Phase 7a)
+ * @file AtomicMemory namespace scaffolding tests
  *
  * Verifies the runtime plumbing of `provider.getExtension('atomicmemory.*')`,
  * `capabilities().customExtensions`, and the placeholder handle's fail-loud
@@ -23,7 +23,7 @@ function createProvider(): AtomicMemoryProvider {
   return new AtomicMemoryProvider({ apiUrl: 'https://example.invalid' });
 }
 
-describe('AtomicMemory namespace scaffolding (Phase 7a)', () => {
+describe('AtomicMemory namespace scaffolding', () => {
   it('declares all atomicmemory.* customExtensions in capabilities', () => {
     const provider = createProvider();
     const caps = provider.capabilities();
@@ -92,10 +92,10 @@ describe('AtomicMemory namespace scaffolding (Phase 7a)', () => {
 
   // Every category now has a real HTTP-wired implementation — category-by-
   // category coverage lives in the dedicated test files:
-  //   Phase 7b base routes   → namespace-base-routes.test.ts
-  //   Phase 7c lifecycle     → namespace-lifecycle.test.ts
-  //   Phase 7d audit         → namespace-audit.test.ts
-  //   Phase 7e lessons       → namespace-lessons.test.ts
-  //   Phase 7f config        → namespace-config.test.ts
-  //   Phase 7g agents        → namespace-agents.test.ts
+  //   base routes   → namespace-base-routes.test.ts
+  //   lifecycle     → namespace-lifecycle.test.ts
+  //   audit         → namespace-audit.test.ts
+  //   lessons       → namespace-lessons.test.ts
+  //   config        → namespace-config.test.ts
+  //   agents        → namespace-agents.test.ts
 });

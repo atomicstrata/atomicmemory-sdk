@@ -21,3 +21,4 @@ export * from './memory/pipeline';
 export * from './memory/registration';
 export * from './memory/atomicmemory-provider';
 export * from './memory/mem0-provider';
+export * from './memory/hindsight-provider';

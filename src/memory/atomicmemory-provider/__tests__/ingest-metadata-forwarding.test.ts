@@ -21,7 +21,7 @@
  *    `metadata` deep-equal to the input
  *  - omission: metadata absent OR `{}` → no `metadata` key on the
  *    wire (so non-metadata callers don't emit a stray empty object)
- *  - text / messages modes (codex round-1 medium): the field is
+ *  - text / messages modes: the field is
  *    inherited from `IngestBase` for type ergonomics, but core
  *    rejects metadata with 400 on every non-verbatim branch.
  *    Forwarding it on those modes would turn a previously-passing
@@ -113,11 +113,10 @@ describe('AtomicMemoryProvider.doIngest — metadata forwarding', () => {
 
   describe('text mode (gate prevents core 400 regression)', () => {
     it('does NOT forward metadata even when caller supplies it', async () => {
-      // Codex round-1: forwarding metadata on text mode would turn
-      // a previously-passing call (silent drop) into a hard 400 from
-      // core. Until type-level narrowing moves `metadata` off
-      // IngestBase, the provider must runtime-gate the forward to
-      // verbatim only.
+      // Forwarding metadata on text mode would turn a previously
+      // accepted call into a hard 400 from core. Until type-level
+      // narrowing moves `metadata` off IngestBase, the provider must
+      // runtime-gate the forward to verbatim only.
       const provider = new AtomicMemoryProvider({ apiUrl: API_URL });
       await provider.ingest({
         mode: 'text',

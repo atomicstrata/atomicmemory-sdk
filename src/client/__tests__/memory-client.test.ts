@@ -60,4 +60,16 @@ describe('MemoryClient', () => {
     });
     expect(client.atomicmemory).toBeUndefined();
   });
+
+  it('initializes hindsight through the default provider registry', async () => {
+    const client = new MemoryClient({
+      providers: {
+        hindsight: { apiUrl: 'https://api.hindsight.vectorize.io' },
+      },
+    });
+
+    await client.initialize();
+
+    expect(client.capabilities().extensions.reflect).toBe(true);
+  });
 });

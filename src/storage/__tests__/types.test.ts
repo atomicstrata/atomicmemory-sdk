@@ -1,7 +1,6 @@
 /**
  * @file Compile-time negative-contract tests for the storage artifact
- * type surface. Mirrors the Phase 7b pattern from the Filecoin work:
- * each `@ts-expect-error` directive proves that a specific shape is
+ * type surface. Each `@ts-expect-error` directive proves that a specific shape is
  * REJECTED by the type system today. A future regression that
  * loosens the types would invalidate the directive itself
  * ("unused directive"), failing `pnpm typecheck`.

@@ -1,13 +1,12 @@
 /**
- * @file AtomicMemoryHandle implementation for base routes (Phase 7b)
+ * @file AtomicMemoryHandle implementation for base routes
  *
  * Wires the 9 namespaced base-route methods directly to atomicmemory-core's
  * HTTP surface:
  *   ingestFull, ingestQuick (incl. skipExtraction), search, searchFast,
  *   expand, list, get, delete.
  *
- * Category handles (lifecycle, audit, lessons, config, agents) remain the
- * fail-loud placeholders from Phase 7a — replaced in Phases 7c–7g.
+ * Category handles cover lifecycle, audit, lessons, config, and agents.
  *
  * Namespace-specific mapping: returned memories carry the full
  * `MemoryScope` discriminated union (not V3's flat `Scope`), so workspace
@@ -463,7 +462,7 @@ function mapSearchResponse(
 }
 
 // ---------------------------------------------------------------------------
-// Lifecycle category (Phase 7c)
+// Lifecycle category
 // ---------------------------------------------------------------------------
 
 /**
@@ -709,7 +708,7 @@ function toReconciliationResult(raw: RawReconciliationResponse): ReconciliationR
 }
 
 // ---------------------------------------------------------------------------
-// Audit category (Phase 7d)
+// Audit category
 // ---------------------------------------------------------------------------
 
 /**
@@ -880,7 +879,7 @@ function toAuditTrailEntry(raw: RawAuditTrailEntry): AuditTrailEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Lessons category (Phase 7e)
+// Lessons category
 // ---------------------------------------------------------------------------
 
 /**
@@ -992,7 +991,7 @@ function toLesson(raw: RawLessonRow): Lesson {
 }
 
 // ---------------------------------------------------------------------------
-// Configuration category (Phase 7f)
+// Configuration category
 // ---------------------------------------------------------------------------
 
 /**
@@ -1098,7 +1097,7 @@ function toHealthConfig(raw: RawHealthConfig): HealthConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Agents category (Phase 7g)
+// Agents category
 // ---------------------------------------------------------------------------
 
 /**

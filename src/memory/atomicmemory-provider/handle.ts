@@ -791,7 +791,7 @@ export interface AtomicMemoryAgents {
  * for SDK configurations that do not include AtomicMemoryProvider.
  */
 export interface AtomicMemoryHandle {
-  // Base routes (Phase 7b implementation)
+  // Base routes
   ingestFull(
     input: AtomicMemoryIngestInput,
     scope: MemoryScope,
@@ -822,7 +822,7 @@ export interface AtomicMemoryHandle {
   get(id: string, scope: MemoryScope): Promise<AtomicMemoryMemory | null>;
   delete(id: string, scope: MemoryScope): Promise<void>;
 
-  // Category sub-accessors (Phase 7c-7g implementation)
+  // Category sub-accessors
   lifecycle: AtomicMemoryLifecycle;
   audit: AtomicMemoryAudit;
   lessons: AtomicMemoryLessons;

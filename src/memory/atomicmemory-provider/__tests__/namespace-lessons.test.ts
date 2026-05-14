@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace lessons HTTP wiring (Phase 7e)
+ * @file AtomicMemory namespace lessons HTTP wiring
  *
  * Exercises each of the 4 lessons methods: list, stats, report, delete.
  * Core's lesson routes are user-scoped per memories.ts:352/362/372/385.

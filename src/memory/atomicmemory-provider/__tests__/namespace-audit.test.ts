@@ -1,5 +1,5 @@
 /**
- * @file AtomicMemory namespace audit HTTP wiring (Phase 7d)
+ * @file AtomicMemory namespace audit HTTP wiring
  *
  * Covers the 3 audit methods: summary, recent, trail. Core's audit
  * routes are user-scoped (memories.ts:481/493/506). Tests verify
