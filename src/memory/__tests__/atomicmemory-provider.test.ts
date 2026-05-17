@@ -99,6 +99,33 @@ describe('ingest', () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.conversation).toBe('user: Hi\nassistant: Hello');
   });
+
+  it('maps scope.thread to session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        episode_id: 'e3',
+        facts_extracted: 1,
+        memories_stored: 1,
+        memories_updated: 0,
+        memories_deleted: 0,
+        memories_skipped: 0,
+        stored_memory_ids: ['m3'],
+        updated_memory_ids: [],
+        links_created: 0,
+        composites_created: 0,
+      })
+    );
+
+    await provider.ingest({
+      mode: 'text',
+      content: 'Hello thread',
+      scope: { user: 'u1', thread: 'thread-1' },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.session_id).toBe('thread-1');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -139,6 +166,58 @@ describe('search', () => {
     expect(page.results[0].rankingScore).toBe(1.25);
     expect(page.results[0].relevance).toBe(0.84);
     expect(page.results[0].memory.id).toBe('s1');
+  });
+
+  it('maps scope.thread to search session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({ memories: [], count: 0 }));
+
+    await provider.search({
+      query: 'test',
+      scope: { user: 'u1', thread: 'thread-1' },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.session_id).toBe('thread-1');
+  });
+
+  it('rejects thread-scoped search rows without matching session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      memories: [{ id: 's1', content: 'wrong thread' }],
+      count: 1,
+    }));
+
+    await expect(provider.search({
+      query: 'test',
+      scope: { user: 'u1', thread: 'thread-1' },
+    })).rejects.toThrow(/session_id/);
+  });
+
+  it('rejects thread-scoped search rows with mismatched session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      memories: [{ id: 's1', content: 'wrong thread', session_id: 'thread-2' }],
+      count: 1,
+    }));
+
+    await expect(provider.search({
+      query: 'test',
+      scope: { user: 'u1', thread: 'thread-1' },
+    })).rejects.toThrow(/session_id/);
+  });
+
+  it('rejects namespace-scoped search rows with mismatched namespace', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      memories: [{ id: 's1', content: 'wrong namespace', namespace: 'other' }],
+      count: 1,
+    }));
+
+    await expect(provider.search({
+      query: 'test',
+      scope: { user: 'u1', namespace: 'expected' },
+    })).rejects.toThrow(/namespace/);
   });
 });
 
@@ -205,7 +284,12 @@ describe('list', () => {
     const provider = createProvider();
     mockFetch.mockResolvedValueOnce(
       jsonResponse({
-        memories: [{ id: 'l1', content: 'item' }],
+        memories: [{
+          id: 'l1',
+          content: 'item',
+          namespace: 'project-a',
+          session_id: 'thread-a',
+        }],
         count: 1,
       })
     );
@@ -216,6 +300,52 @@ describe('list', () => {
     expect(url).toBe(`${API_URL}/v1/memories/list?user_id=u1&limit=10&offset=0`);
     expect(page.memories).toHaveLength(1);
     expect(page.memories[0].id).toBe('l1');
+    expect(page.memories[0].scope).toEqual({
+      user: 'u1',
+      namespace: 'project-a',
+      thread: 'thread-a',
+    });
+  });
+
+  it('maps scope.thread to list session_id query param', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({ memories: [], count: 0 }));
+
+    await provider.list({
+      scope: { user: 'u1', thread: 'thread-1' },
+      limit: 10,
+    });
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe(
+      `${API_URL}/v1/memories/list?user_id=u1&limit=10&offset=0&session_id=thread-1`,
+    );
+  });
+
+  it('rejects thread-scoped list rows without matching session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      memories: [{ id: 'l1', content: 'missing session' }],
+      count: 1,
+    }));
+
+    await expect(provider.list({
+      scope: { user: 'u1', thread: 'thread-1' },
+      limit: 10,
+    })).rejects.toThrow(/session_id/);
+  });
+
+  it('rejects thread-scoped list rows with mismatched session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      memories: [{ id: 'l1', content: 'wrong session', session_id: 'thread-2' }],
+      count: 1,
+    }));
+
+    await expect(provider.list({
+      scope: { user: 'u1', thread: 'thread-1' },
+      limit: 10,
+    })).rejects.toThrow(/session_id/);
   });
 
   it('returns cursor when results fill the limit', async () => {
@@ -304,6 +434,45 @@ describe('package', () => {
     expect(pkg.budgetConstrained).toBe(false);
   });
 
+  it('maps scope.thread to package session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        memories: [],
+        injection_text: '',
+        estimated_context_tokens: 0,
+        budget_constrained: false,
+      })
+    );
+
+    await provider.package({
+      query: 'what did I say',
+      scope: { user: 'u1', thread: 'thread-1' },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.session_id).toBe('thread-1');
+  });
+
+  it('rejects thread-scoped package rows without matching session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        memories: [{ id: 'p1', content: 'wrong thread', score: 0.9 }],
+        injection_text: 'wrong thread',
+        estimated_context_tokens: 2,
+        budget_constrained: false,
+      })
+    );
+
+    await expect(
+      provider.package({
+        query: 'what did I say',
+        scope: { user: 'u1', thread: 'thread-1' },
+      })
+    ).rejects.toThrow(/session_id/);
+  });
+
   it('propagates budget_constrained=true from the backend', async () => {
     const provider = createProvider();
     mockFetch.mockResolvedValueOnce(
@@ -346,6 +515,27 @@ describe('package', () => {
     await expect(
       provider.package({ query: 'q', scope: VALID_SCOPE })
     ).rejects.toThrow(/budget_constrained/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// searchAsOf() — TemporalSearch
+// ---------------------------------------------------------------------------
+
+describe('searchAsOf', () => {
+  it('maps scope.thread to temporal search session_id', async () => {
+    const provider = createProvider();
+    mockFetch.mockResolvedValueOnce(jsonResponse({ memories: [] }));
+
+    await provider.searchAsOf({
+      query: 'what did I say',
+      scope: { user: 'u1', thread: 'thread-1' },
+      asOf: new Date('2026-05-16T12:00:00.000Z'),
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.session_id).toBe('thread-1');
+    expect(body.as_of).toBe('2026-05-16T12:00:00.000Z');
   });
 });
 

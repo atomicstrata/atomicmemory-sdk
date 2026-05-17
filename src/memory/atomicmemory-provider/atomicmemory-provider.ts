@@ -48,6 +48,10 @@ import {
 } from './mappers';
 import type { AtomicMemoryHandle } from './handle';
 import { createAtomicMemoryHandle } from './handle-impl';
+import {
+  filterMetaFacts,
+  type MetaFactFilterConfig,
+} from '../meta-fact-filter';
 
 export class AtomicMemoryProvider
   extends BaseMemoryProvider
@@ -60,6 +64,12 @@ export class AtomicMemoryProvider
    * Empty string disables prefixing (legacy deployments only).
    */
   private readonly apiPrefix: string;
+  /**
+   * Opt-in post-retrieval meta-fact filter. `undefined` (default) means
+   * filtering is off. See `MetaFactFilterConfig` and
+   * `benchmarks/alignbench/RESULTS.md` for motivation.
+   */
+  private readonly metaFactFilter?: MetaFactFilterConfig;
 
   constructor(config: AtomicMemoryProviderConfig) {
     super();
@@ -70,6 +80,24 @@ export class AtomicMemoryProvider
     };
     this.apiPrefix = normalizeApiVersion(
       config.apiVersion ?? DEFAULT_API_VERSION,
+    );
+    this.metaFactFilter = config.metaFactFilter;
+  }
+
+  /**
+   * Drop meta-fact entries from a SearchResult list when the filter is enabled.
+   *
+   * Called once per search-style endpoint (regular search, temporal search,
+   * package) so meta-facts never reach the caller. No-op when
+   * `this.metaFactFilter` is `undefined` or `enabled: false` — matches the
+   * pre-filter behaviour byte-for-byte.
+   */
+  private applyMetaFactFilter(results: SearchResult[]): SearchResult[] {
+    if (!this.metaFactFilter || !this.metaFactFilter.enabled) return results;
+    return filterMetaFacts(
+      results,
+      (r) => r.memory.content,
+      this.metaFactFilter,
     );
   }
 
@@ -91,6 +119,7 @@ export class AtomicMemoryProvider
       source_site: input.provenance?.source ?? 'sdk',
       source_url: input.provenance?.sourceUrl ?? '',
     };
+    if (input.scope.thread) body.session_id = input.scope.thread;
     if (isVerbatim) body.skip_extraction = true;
     // Forward caller-supplied metadata to the wire ONLY on the
     // verbatim path. Core honors `metadata` only on
@@ -140,6 +169,7 @@ export class AtomicMemoryProvider
       limit: request.limit,
       threshold: request.threshold,
       namespace_scope: request.scope.namespace,
+      session_id: request.scope.thread,
     };
 
     const raw = await fetchJson<{ memories: any[]; count: number }>(
@@ -149,8 +179,8 @@ export class AtomicMemoryProvider
     );
 
     return {
-      results: raw.memories.map((m: any) =>
-        toSearchResult(m, request.scope)
+      results: this.applyMetaFactFilter(
+        raw.memories.map((m: any) => toSearchResult(m, request.scope)),
       ),
     };
   }
@@ -185,7 +215,7 @@ export class AtomicMemoryProvider
       count: number;
     }>(
       this.http,
-      this.route(`/memories/list?user_id=${encodeURIComponent(request.scope.user ?? '')}&limit=${limit}&offset=${offset}`)
+      this.route(buildListPath(request.scope, limit, offset))
     );
 
     const nextOffset = offset + raw.memories.length;
@@ -294,6 +324,7 @@ export class AtomicMemoryProvider
         limit: request.limit,
         threshold: request.threshold,
         namespace_scope: request.scope.namespace,
+        session_id: request.scope.thread,
         retrieval_mode: mapPackageFormat(request.format),
         token_budget: request.tokenBudget,
         skip_repair: true,
@@ -315,8 +346,8 @@ export class AtomicMemoryProvider
         );
       }
 
-      const results: SearchResult[] = raw.memories.map((m: any) =>
-        toSearchResult(m, request.scope)
+      const results: SearchResult[] = this.applyMetaFactFilter(
+        raw.memories.map((m: any) => toSearchResult(m, request.scope)),
       );
 
       return {
@@ -342,6 +373,7 @@ export class AtomicMemoryProvider
           threshold: request.threshold,
           as_of: request.asOf.toISOString(),
           namespace_scope: request.scope.namespace,
+          session_id: request.scope.thread,
         };
 
         const raw = await fetchJson<{
@@ -352,8 +384,8 @@ export class AtomicMemoryProvider
         });
 
         return {
-          results: raw.memories.map((m: any) =>
-            toSearchResult(m, request.scope)
+          results: this.applyMetaFactFilter(
+            raw.memories.map((m: any) => toSearchResult(m, request.scope)),
           ),
         };
       }
@@ -395,6 +427,16 @@ export class AtomicMemoryProvider
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function buildListPath(scope: Scope, limit: number, offset: number): string {
+  const params = new URLSearchParams({
+    user_id: scope.user ?? '',
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (scope.thread) params.set('session_id', scope.thread);
+  return `/memories/list?${params.toString()}`;
+}
 
 function ingestInputToConversation(input: IngestInput): string {
   switch (input.mode) {

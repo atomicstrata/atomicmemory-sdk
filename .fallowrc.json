@@ -13,7 +13,8 @@
   ],
   "publicPackages": ["@atomicmemory/atomicmemory-sdk"],
   "ignorePatterns": [
-    "**/one-offs/**"
+    "**/one-offs/**",
+    "benchmarks/**"
   ],
   "rules": {
     "unused-class-members": "off",
@@ -30,6 +31,7 @@
       "tests/**",
       "scripts/**",
       "examples/**",
+      "benchmarks/**",
       "src/embedding/wasm-semantic-processor.ts"
     ]
   },
@@ -45,7 +47,8 @@
       "**/*.spec.tsx",
       "tests/**",
       "scripts/**",
-      "examples/**"
+      "examples/**",
+      "benchmarks/**"
     ]
   },
   "regression": {
