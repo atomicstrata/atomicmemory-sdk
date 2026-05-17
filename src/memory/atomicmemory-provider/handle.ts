@@ -49,12 +49,13 @@ export type AgentScope =
  * at `atomicmemory-core/src/services/memory-service-types.ts:142-144`.
  */
 export type MemoryScope =
-  | { kind: 'user'; userId: string }
+  | { kind: 'user'; userId: string; thread?: string }
   | {
       kind: 'workspace';
       userId: string;
       workspaceId: string;
       agentId: string;
+      thread?: string;
       agentScope?: AgentScope;
     };
 

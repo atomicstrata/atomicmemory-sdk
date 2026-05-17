@@ -14,3 +14,10 @@ export * from './registration';
 export * from './atomicmemory-provider';
 export * from './mem0-provider';
 export * from './hindsight-provider';
+export {
+  filterMetaFacts,
+  isMetaFact,
+  resolveMetaFactPatterns,
+  DEFAULT_META_FACT_PATTERNS,
+  type MetaFactFilterConfig,
+} from './meta-fact-filter';

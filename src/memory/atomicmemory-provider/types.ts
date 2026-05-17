@@ -2,6 +2,8 @@
  * @file AtomicMemory Provider Configuration
  */
 
+import type { MetaFactFilterConfig } from '../meta-fact-filter';
+
 export interface AtomicMemoryProviderConfig {
   /** Base URL of the atomicmemory-core instance, e.g. `http://localhost:3050`. */
   apiUrl: string;
@@ -23,6 +25,22 @@ export interface AtomicMemoryProviderConfig {
    * that never versioned their mount).
    */
   apiVersion?: string;
+  /**
+   * Opt-in post-retrieval filter that drops extraction-style meta-facts
+   * (e.g. "The user asked for the user's name.", "As of <date>, X is a term
+   * mentioned in the conversation.") before they reach the caller.
+   *
+   * Empirically motivated by `benchmarks/alignbench/RESULTS.md`: meta-facts
+   * are the dominant cause of partner-visible recall failures, outranking
+   * real user facts at thin cosine margins. Filtering them post-hoc gives
+   * cleaner search results today while a durable upstream extraction-prompt
+   * fix rolls out in core.
+   *
+   * When omitted, the filter is OFF and behaviour is unchanged. Set
+   * `{ enabled: true }` to activate with the built-in pattern set, or pass
+   * additional `patterns` / `mode` per `MetaFactFilterConfig`.
+   */
+  metaFactFilter?: MetaFactFilterConfig;
 }
 
 /** Default timeout for AtomicMemory provider HTTP requests (ms). */

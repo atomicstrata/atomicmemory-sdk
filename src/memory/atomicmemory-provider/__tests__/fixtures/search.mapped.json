@@ -4,7 +4,8 @@
       "id": "FIXTURE-MEM-2",
       "content": "user's library card expires in March 2027.",
       "scope": {
-        "user": "fixture-capture"
+        "user": "fixture-capture",
+        "thread": "fixture-thread-quick"
       },
       "createdAt": "2026-04-24T10:00:00.000Z",
       "provenance": {
@@ -24,7 +25,8 @@
       "id": "FIXTURE-MEM-1",
       "content": "User prefers aisle seats on flights longer than four hours.",
       "scope": {
-        "user": "fixture-capture"
+        "user": "fixture-capture",
+        "thread": "fixture-thread-full"
       },
       "createdAt": "2026-04-24T10:00:00.000Z",
       "provenance": {

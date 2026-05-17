@@ -72,6 +72,7 @@ import {
   scopeToFields,
   scopeToQueryParams,
   stripAgentScope,
+  stripReadFilters,
 } from './scope-mapper';
 
 export function createAtomicMemoryHandle(
@@ -114,7 +115,7 @@ export function createAtomicMemoryHandle(
       );
       // Echo back the scope WITHOUT agentScope: core didn't apply that
       // filter on expand, so returned memories must not claim otherwise.
-      const echoedScope = stripAgentScope(scope);
+      const echoedScope = stripReadFilters(scope);
       return raw.memories.map((m) => toAtomicMemoryMemory(m, echoedScope));
     },
     async list(scope, options) {
@@ -126,7 +127,7 @@ export function createAtomicMemoryHandle(
       // SDK so the mismatch surfaces at the call site.
       assertListOptionsScopeCompat(scope, options);
 
-      const params = scopeToQueryParams(scope);
+      const params = scopeToQueryParams(scope, { includeThread: true });
       if (options?.limit !== undefined) params.set('limit', String(options.limit));
       if (options?.offset !== undefined) params.set('offset', String(options.offset));
       if (options?.sourceSite) params.set('source_site', options.sourceSite);
@@ -150,19 +151,21 @@ export function createAtomicMemoryHandle(
       };
     },
     async get(id, scope) {
-      // agent_scope deliberately omitted — core's /:id GET drops it.
-      const params = scopeToQueryParams(scope);
+      // agent_scope/thread deliberately omitted — core's /:id GET is id-keyed
+      // and does not apply those read filters. The returned scope reflects the
+      // persisted row, not the caller's unapplied filter.
+      const params = scopeToQueryParams(stripReadFilters(scope));
       const raw = await fetchJsonOrNull<unknown>(
         http,
         route(`/memories/${encodeURIComponent(id)}?${params.toString()}`),
       );
       if (!raw) return null;
-      // Echoed scope drops agentScope — see expand() note above.
-      return toAtomicMemoryMemory(raw, stripAgentScope(scope));
+      // Echoed scope drops unapplied filters — see expand() note above.
+      return toAtomicMemoryMemory(raw, stripReadFilters(scope));
     },
     async delete(id, scope) {
-      // agent_scope deliberately omitted — core's /:id DELETE drops it.
-      const params = scopeToQueryParams(scope);
+      // agent_scope/thread deliberately omitted — core's /:id DELETE is id-keyed.
+      const params = scopeToQueryParams(stripReadFilters(scope));
       try {
         await fetchVoid(
           http,
@@ -229,7 +232,7 @@ async function postIngest(
   assertScopeAllowsVisibility(scope, input.visibility);
 
   const body: Record<string, unknown> = {
-    ...scopeToFields(scope),
+    ...scopeToFields(scope, { includeThread: true }),
     conversation: input.conversation,
     source_site: input.sourceSite,
     source_url: input.sourceUrl ?? '',
@@ -290,7 +293,10 @@ async function postSearch(
   scope: MemoryScope,
 ): Promise<AtomicMemorySearchResultPage> {
   // agent_scope is honored ONLY on search routes — opt in here.
-  const scopeFields = scopeToFields(scope, { includeAgentScope: true });
+  const scopeFields = scopeToFields(scope, {
+    includeAgentScope: true,
+    includeThread: true,
+  });
   const body: Record<string, unknown> = {
     ...scopeFields,
     query: request.query,
@@ -333,6 +339,7 @@ interface RawMemoryResponse {
   created_at?: string;
   updated_at?: string;
   metadata?: Record<string, unknown>;
+  session_id?: string | null;
 }
 
 interface RawSearchResponse {
@@ -381,7 +388,7 @@ function toAtomicMemoryMemory(
   const result: AtomicMemoryMemory = {
     id: r.id,
     content: r.content ?? '',
-    scope,
+    scope: buildMemoryScope(r, scope),
     createdAt: r.created_at ? new Date(r.created_at) : new Date(),
   };
   if (r.updated_at) result.updatedAt = new Date(r.updated_at);
@@ -392,6 +399,26 @@ function toAtomicMemoryMemory(
   if (r.visibility !== undefined) result.visibility = r.visibility;
   if (r.metadata !== undefined) result.metadata = r.metadata;
   return result;
+}
+
+function buildMemoryScope(
+  raw: RawMemoryResponse,
+  requestedScope: MemoryScope,
+): MemoryScope {
+  if (requestedScope.thread !== undefined) {
+    if (!raw.session_id) {
+      throw new Error(
+        'atomicmemory-provider: backend response missing required `session_id` for thread-scoped request',
+      );
+    }
+    if (raw.session_id !== requestedScope.thread) {
+      throw new Error(
+        'atomicmemory-provider: backend response `session_id` did not match requested thread scope',
+      );
+    }
+  }
+  if (!raw.session_id) return requestedScope;
+  return { ...requestedScope, thread: raw.session_id };
 }
 
 function toAtomicMemorySearchResult(

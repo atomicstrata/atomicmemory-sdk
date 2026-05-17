@@ -38,3 +38,6 @@ pnpm-debug.log*
 
 # Internal tech-debt notes — never commit.
 tech-debt.md
+
+# Superpowers skill plugin output — agent-generated specs/plans, internal-only.
+docs/superpowers/

@@ -30,6 +30,8 @@ interface RawMemory {
   source_url?: string;
   /** Present on list responses; dropped from search responses today. */
   episode_id?: string;
+  namespace?: string;
+  session_id?: string | null;
   created_at?: string;
 }
 
@@ -72,10 +74,35 @@ export function toMemory(raw: RawMemory, scope: Scope): Memory {
   return {
     id: raw.id,
     content: raw.content,
-    scope,
+    scope: buildScope(raw, scope),
     createdAt: raw.created_at ? new Date(raw.created_at) : new Date(),
     provenance: buildProvenance(raw),
     metadata: buildMetadata(raw),
+  };
+}
+
+function buildScope(raw: RawMemory, scope: Scope): Scope {
+  if (scope.namespace !== undefined && raw.namespace && raw.namespace !== scope.namespace) {
+    throw new Error(
+      'atomicmemory-provider: backend response `namespace` did not match requested namespace scope',
+    );
+  }
+  if (scope.thread !== undefined) {
+    if (!raw.session_id) {
+      throw new Error(
+        'atomicmemory-provider: backend response missing required `session_id` for thread-scoped request',
+      );
+    }
+    if (raw.session_id !== scope.thread) {
+      throw new Error(
+        'atomicmemory-provider: backend response `session_id` did not match requested thread scope',
+      );
+    }
+  }
+  return {
+    ...scope,
+    ...(raw.namespace ? { namespace: raw.namespace } : {}),
+    ...(raw.session_id ? { thread: raw.session_id } : {}),
   };
 }
 

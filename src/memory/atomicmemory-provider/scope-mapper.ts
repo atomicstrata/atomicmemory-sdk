@@ -23,6 +23,7 @@ interface ScopeFields {
   workspace_id?: string;
   agent_id?: string;
   agent_scope?: AgentScope;
+  session_id?: string;
 }
 
 interface ScopeSerializeOptions {
@@ -36,6 +37,12 @@ interface ScopeSerializeOptions {
    * Defaults to `false`. Search route bindings opt in explicitly.
    */
   includeAgentScope?: boolean;
+  /**
+   * Emit `session_id` on the wire. Core honors this on ingest, search, and
+   * list. Routes such as get/delete/expand do not filter by session, so they
+   * must not send or echo it.
+   */
+  includeThread?: boolean;
 }
 
 export function scopeToFields(
@@ -43,7 +50,11 @@ export function scopeToFields(
   options: ScopeSerializeOptions = {},
 ): ScopeFields {
   if (scope.kind === 'user') {
-    return { user_id: scope.userId };
+    const fields: ScopeFields = { user_id: scope.userId };
+    if (options.includeThread && scope.thread) {
+      fields.session_id = scope.thread;
+    }
+    return fields;
   }
   const fields: ScopeFields = {
     user_id: scope.userId,
@@ -52,6 +63,9 @@ export function scopeToFields(
   };
   if (options.includeAgentScope && scope.agentScope !== undefined) {
     fields.agent_scope = scope.agentScope;
+  }
+  if (options.includeThread && scope.thread) {
+    fields.session_id = scope.thread;
   }
   return fields;
 }
@@ -83,6 +97,7 @@ export function scopeToQueryParams(
       params.set('agent_scope', fields.agent_scope);
     }
   }
+  if (fields.session_id) params.set('session_id', fields.session_id);
   return params;
 }
 
@@ -107,7 +122,7 @@ export function assertScopeAllowsVisibility(
 
 /**
  * Strip `agentScope` from a `MemoryScope` for routes that do NOT honor
- * agent_scope on the backend (expand / list / get / delete). Used to
+ * agent_scope on the backend. Used to
  * echo scope back on returned memories honestly — so a caller who
  * passed `{ agentScope: 'self' }` does not receive memories whose
  * `.scope.agentScope` field implies the filter was applied when it
@@ -122,6 +137,24 @@ export function stripAgentScope(scope: MemoryScope): MemoryScope {
     userId: scope.userId,
     workspaceId: scope.workspaceId,
     agentId: scope.agentId,
+    ...(scope.thread !== undefined ? { thread: scope.thread } : {}),
   };
   return stripped;
+}
+
+/**
+ * Strip filters that the target route did not apply before echoing scope onto
+ * returned memories. Search/list can preserve thread because Core applies the
+ * filter and projects `session_id`; expand/get/delete cannot.
+ */
+export function stripReadFilters(scope: MemoryScope): MemoryScope {
+  if (scope.kind === 'user') {
+    return { kind: 'user', userId: scope.userId };
+  }
+  return {
+    kind: 'workspace',
+    userId: scope.userId,
+    workspaceId: scope.workspaceId,
+    agentId: scope.agentId,
+  };
 }

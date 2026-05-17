@@ -127,6 +127,20 @@ describe('atomicmemory.ingestFull', () => {
     expect(body.agent_scope).toBeUndefined();
   });
 
+  it('forwards thread scope as session_id on ingest', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ episode_id:'e1', facts_extracted:0, memories_stored:0, memories_updated:0, memories_deleted:0, memories_skipped:0, stored_memory_ids: [], updated_memory_ids: [], links_created:0, composites_created:0 }),
+    );
+    const handle = createHandle();
+
+    await handle.ingestFull(
+      { conversation: 'x', sourceSite: 's' },
+      { ...USER_SCOPE, thread: 'thread-1' },
+    );
+
+    expect(capturedCall(mockFetch).body?.session_id).toBe('thread-1');
+  });
+
   it('forwards visibility on workspace scope', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ episode_id:'e1', facts_extracted:0, memories_stored:0, memories_updated:0, memories_deleted:0, memories_skipped:0, stored_memory_ids: [], updated_memory_ids: [], links_created:0, composites_created:0 }),
@@ -232,6 +246,45 @@ describe('atomicmemory.search', () => {
     expect(result.citations).toEqual(['m1', 'm2']);
     expect(result.observability).toBeDefined();
   });
+
+  it('forwards thread scope and maps returned session_id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        count: 1,
+        retrieval_mode: 'flat',
+        memories: [{ id: 'm1', content: 'a', session_id: 'thread-1' }],
+      }),
+    );
+
+    const handle = createHandle();
+    const result = await handle.search(
+      { query: 'q' },
+      { ...USER_SCOPE, thread: 'thread-1' },
+    );
+
+    const call = capturedCall(mockFetch);
+    expect(call.body?.session_id).toBe('thread-1');
+    expect(result.results[0].memory.scope).toEqual({
+      ...USER_SCOPE,
+      thread: 'thread-1',
+    });
+  });
+
+  it('rejects thread-scoped rows without matching session_id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        count: 1,
+        retrieval_mode: 'flat',
+        memories: [{ id: 'm1', content: 'a' }],
+      }),
+    );
+
+    const handle = createHandle();
+    await expect(
+      handle.search({ query: 'q' }, { ...USER_SCOPE, thread: 'thread-1' }),
+    ).rejects.toThrow(/session_id/);
+  });
+
 });
 
 describe('atomicmemory.searchFast', () => {
@@ -298,6 +351,33 @@ describe('atomicmemory.list', () => {
     const call = capturedCall(mockFetch);
     expect(call.url).toContain('workspace_id=ws1');
     expect(call.url).toContain('agent_id=a1');
+  });
+
+  it('forwards thread scope and maps returned session_id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        memories: [{ id: 'm1', content: 'a', session_id: 'thread-1' }],
+        count: 1,
+      }),
+    );
+    const handle = createHandle();
+    const page = await handle.list({ ...WORKSPACE_SCOPE, thread: 'thread-1' });
+    const call = capturedCall(mockFetch);
+    expect(call.url).toContain('session_id=thread-1');
+    expect(page.memories[0].scope).toEqual({
+      ...WORKSPACE_SCOPE,
+      thread: 'thread-1',
+    });
+  });
+
+  it('rejects thread-scoped list rows without matching session_id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ memories: [{ id: 'm1', content: 'a' }], count: 1 }),
+    );
+    const handle = createHandle();
+    await expect(
+      handle.list({ ...USER_SCOPE, thread: 'thread-1' }),
+    ).rejects.toThrow(/session_id/);
   });
 });
 
